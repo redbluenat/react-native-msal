@@ -1,12 +1,14 @@
 package com.reactnativemsal;
 
+import static com.reactnativemsal.ReadableMapUtils.getStringOrDefault;
+import static com.reactnativemsal.ReadableMapUtils.getStringOrThrow;
+
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.Signature;
 import android.net.Uri;
 import android.util.Base64;
 import android.util.Log;
-import android.util.Pair;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -39,14 +41,14 @@ import org.json.JSONObject;
 import java.io.File;
 import java.io.FileWriter;
 import java.security.MessageDigest;
+import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import static com.reactnativemsal.ReadableMapUtils.getStringOrDefault;
-import static com.reactnativemsal.ReadableMapUtils.getStringOrThrow;
 
 public class RNMSALModule extends ReactContextBaseJavaModule {
     private static final String AUTHORITY_TYPE_B2C = "B2C";
@@ -76,7 +78,7 @@ public class RNMSALModule extends ReactContextBaseJavaModule {
             // We first need to create the JSON model using the passed in parameters
 
             JSONObject msalConfigJsonObj = params.hasKey("androidConfigOptions")
-                    ? ReadableMapUtils.toJsonObject(params.getMap("androidConfigOptions"))
+                    ? ReadableMapUtils.toJsonObject(Objects.requireNonNull(params.getMap("androidConfigOptions")))
                     : new JSONObject();
 
             // Account mode. Required to be MULTIPLE for this library
@@ -243,10 +245,11 @@ public class RNMSALModule extends ReactContextBaseJavaModule {
             }
 
             if (params.hasKey("extraQueryParameters")) {
-                List<Pair<String, String>> parameters = new ArrayList<>();
-                for (Map.Entry<String, Object> entry :
-                        params.getMap("extraQueryParameters").toHashMap().entrySet()) {
-                    parameters.add(new Pair<>(entry.getKey(), entry.getValue().toString()));
+                Iterator<Map.Entry<String, Object>> iterator = Objects.requireNonNull(params.getMap("extraQueryParameters")).getEntryIterator();
+                List<Map.Entry<String, String>> parameters = new ArrayList<>();
+                while (iterator.hasNext()) {
+                    Map.Entry<String, Object> entry = iterator.next();
+                    parameters.add(new AbstractMap.SimpleEntry<>(entry.getKey(), entry.getValue().toString()));
                 }
                 acquireTokenParameters.withAuthorizationQueryStringParameters(parameters);
             }
@@ -292,8 +295,8 @@ public class RNMSALModule extends ReactContextBaseJavaModule {
             acquireTokenSilentParameters.withScopes(scopes);
 
             ReadableMap accountIn = params.getMap("account");
-            String accountIdentifier = accountIn.getString("identifier");
-            IAccount account = publicClientApplication.getAccount(accountIdentifier);
+            String accountIdentifier = Objects.requireNonNull(accountIn).getString("identifier");
+            IAccount account = publicClientApplication.getAccount(Objects.requireNonNull(accountIdentifier));
             acquireTokenSilentParameters.forAccount(account);
 
             // Optional parameters
@@ -356,7 +359,7 @@ public class RNMSALModule extends ReactContextBaseJavaModule {
     @ReactMethod
     public void getAccount(String accountIdentifier, Promise promise) {
         try {
-            IAccount account = publicClientApplication.getAccount(accountIdentifier);
+            IAccount account = publicClientApplication.getAccount(Objects.requireNonNull(accountIdentifier));
             if (account != null) {
                 promise.resolve(accountToMap(account));
             } else {
@@ -372,7 +375,7 @@ public class RNMSALModule extends ReactContextBaseJavaModule {
         try {
             // Required parameters
             String accountIdentifier = accountIn.getString(("identifier"));
-            IAccount account = publicClientApplication.getAccount(accountIdentifier);
+            IAccount account = publicClientApplication.getAccount(Objects.requireNonNull(accountIdentifier));
 
             publicClientApplication.removeAccount(
                     account,
